@@ -60,13 +60,17 @@ def calculate_win_and_payout(number: int, color: str, bet_choice: str, amount: i
     :param amount: Сумма ставки
     :return: (победа: bool, выплата: int)
     """
-    if bet_choice in ("red", "красное"):
+    RED_VARIANTS = {"red", "красное", "красный", "к", "красн"}
+    BLACK_VARIANTS = {"black", "чёрное", "черное", "чёрный", "черный", "ч"}
+    GREEN_VARIANTS = {"green", "зеленое", "зелёное", "зелёный", "зеленый", "з", "зел"}
+
+    if bet_choice in RED_VARIANTS:
         if color == "red":
             return True, amount * 2
-    elif bet_choice in ("black", "чёрное", "черное"):
+    elif bet_choice in BLACK_VARIANTS:
         if color == "black":
             return True, amount * 2
-    elif bet_choice in ("green", "зеленое", "зелёное"):
+    elif bet_choice in GREEN_VARIANTS:
         if number == 0:
             return True, amount * 18
     elif "-" in bet_choice:
