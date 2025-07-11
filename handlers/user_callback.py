@@ -286,6 +286,10 @@ async def process_bonus(callback: CallbackQuery, dp_pool: Pool, user_id):
                     await callback.answer(f"Бонус уже получен! Повторно можно через {hours}ч {minutes}м.")
                     return
 
+            if await check_user_balance(dp_pool, user_id):
+                await callback.answer("Для бонуса баланс должен быть ниже 2000 монеток.")
+                return
+
             await callback.answer()
             # Выдаём бонус
             await cursor.execute(UPDATE_USER_LASTBONUS, (now, user_id))
@@ -294,6 +298,20 @@ async def process_bonus(callback: CallbackQuery, dp_pool: Pool, user_id):
             await conn.commit()
 
             await callback.message.answer(f"🎁 Ты получил бонус +{BONUS_AMOUNT} монет!")
+
+
+async def check_user_balance(dp_pool: Pool, user_id):
+    async with dp_pool.acquire() as conn:
+        async with conn.cursor() as cursor:
+            cursor: Cursor
+            await cursor.execute(SELECT_BALANCE, (user_id,))
+            row = await cursor.fetchone()
+            if not row:
+                return False
+            balance = row[0]
+            if balance is None:
+                return False
+            return int(balance) > 2000
 
 
 @user_callback.callback_query(F.data.startswith("lang_"))
