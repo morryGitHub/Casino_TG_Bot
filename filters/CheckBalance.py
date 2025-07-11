@@ -14,7 +14,7 @@ class CheckBalance(BaseFilter):
             logging.debug("CheckBalance filter: missing dp_pool or user_id")
             return False
 
-        min_bet = 500
+        min_bet = 0
         async with dp_pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(SELECT_BALANCE, (user_id,))
