@@ -10,13 +10,14 @@ from aiomysql import Pool, Cursor
 
 from filters.CheckBalance import CheckBalance
 from filters.ValidMessageFilter import ValidMessageFilter
-from lexicon.colors import COLOR_EMOJIS
+from lexicon.colors import COLOR_MAP, COLOR_EMOJIS
 from aiomysql import Error as AiomysqlError
 
 from FSM.FSM import GameStates
 from db.database import user_messages, bet_messages, roulette_messages, users_bet, total_bet, double_messages
 from db.queries import SELECT_BALANCE, UPDATE_BALANCE_BEFORE_SPIN, UPDATE_BALANCE_AFTER_SPIN, UPDATE_USER_LANG, \
-    UPDATE_WIN_RESULTS, UPDATE_LOST_RESULTS, SELECT_USER_LASTBONUS, UPDATE_USER_LASTBONUS, UPDATE_BALANCE
+    UPDATE_WIN_RESULTS, UPDATE_LOST_RESULTS, SELECT_USER_LASTBONUS, UPDATE_USER_LASTBONUS, UPDATE_BALANCE, \
+    SELECT_MAXWIN_RESULTS, SELECT_MAXBET_RESULTS, UPDATE_MAXWIN_RESULTS, UPDATE_MAXBET_RESULTS
 from services.roulette_logic import spin_roulette, calculate_win_and_payout
 from services.updates import clear_dicts, end_roulette, delete_user_messages, delete_double_messages, delete_bet_mes
 
@@ -49,7 +50,7 @@ async def bet_handler(callback: CallbackQuery, state: FSMContext, username, dp_p
 
     bet_color = None
     if bet_range_or_color in ['red', 'green', 'black']:
-        bet_color = COLOR_EMOJIS[bet_range_or_color]
+        bet_color = COLOR_MAP[bet_range_or_color]
 
     # Если пользователь уже ставил, добавляем новую ставку в список
     if user_id in users_bet:
@@ -77,7 +78,7 @@ async def bet_handler(callback: CallbackQuery, state: FSMContext, username, dp_p
 
     # Отправляем сообщение
     bet_message = await callback.message.answer(
-        text=f"""Ставка {action}: <a href="tg://user?id={user_id}">{username}</a> {bet_sum} монет на {bet_color or bet_range_or_color}""",
+        text=f"""Ставка {action}: <a href="tg://user?id={user_id}">{username}</a> {bet_sum} монет на {COLOR_EMOJIS.get(bet_range_or_color, bet_range_or_color)}""",
         parse_mode="HTML"
     )
 
@@ -126,9 +127,17 @@ async def spin_handler(callback: CallbackQuery, bot: Bot, state: FSMContext, dp_
     async with dp_pool.acquire() as conn:
         async with conn.cursor() as cursor:
             if total_payout_sum > total_bet_sum:
-                await cursor.execute(UPDATE_WIN_RESULTS, (total_payout_sum - total_bet_sum, user_id))
+                await cursor.execute(UPDATE_WIN_RESULTS, (total_payout_sum, user_id))
             else:
-                await cursor.execute(UPDATE_LOST_RESULTS, (total_bet_sum - total_payout_sum, user_id))
+                await cursor.execute(UPDATE_LOST_RESULTS, (total_bet_sum, user_id))
+            await cursor.execute(SELECT_MAXWIN_RESULTS, user_id)
+            (maxWin,) = await cursor.fetchone()
+            await cursor.execute(SELECT_MAXBET_RESULTS, user_id)
+            (maxBet,) = await cursor.fetchone()
+            if total_payout_sum > maxWin:
+                await cursor.execute(UPDATE_MAXWIN_RESULTS, (total_payout_sum, user_id))
+            if total_bet_sum > maxBet:
+                await cursor.execute(UPDATE_MAXBET_RESULTS, (total_bet_sum, user_id))
 
     await delete_bet_mes(bot)
     clear_dicts()

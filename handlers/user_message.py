@@ -12,14 +12,16 @@ from db.database import user_messages, roulette_messages, bet_messages, users_be
 from db.queries import SELECT_BALANCE, UPDATE_BALANCE_BEFORE_SPIN, UPDATE_BALANCE_AFTER_SPIN, UPDATE_USER_ACTIVE, \
     SELECT_DATA_FROM_RESULTS, UPDATE_WIN_RESULTS, UPDATE_LOST_RESULTS, SELECT_MAXWIN_RESULTS, SELECT_MAXBET_RESULTS, \
     UPDATE_MAXWIN_RESULTS, UPDATE_MAXBET_RESULTS
+from filters.CheckChatMember import IsBotAdminFilter
 from keyboards.user_kb import start_buttons, bets_keyboards, bonus_button
 from lexicon.Lexicon import lexicon
 from services.roulette_logic import create_roulette, spin_roulette, calculate_win_and_payout
-from lexicon.colors import COLOR_EMOJIS, COLORS_NAME, BET_ALL_IN
+from lexicon.colors import COLOR_MAP, BET_ALL_IN, COLOR_EMOJIS
 from services.updates import delete_roulette_message, end_roulette, clear_dicts, delete_user_messages, \
     delete_double_messages, delete_bet_mes
 
 user_message = Router()
+user_message.message.filter(IsBotAdminFilter())
 
 
 @user_message.message(CommandStart())
@@ -93,6 +95,7 @@ async def handle_three_word_bet(message: Message, user_id, username, dp_pool: Po
     bet_sum = bet_data[0]
     bet_range_or_color = bet_data[2]
 
+    logging.debug(1)
     if bet_sum.lower().strip() in BET_ALL_IN:
         async with dp_pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -103,32 +106,28 @@ async def handle_three_word_bet(message: Message, user_id, username, dp_pool: Po
                     return
                 balance = row[0]
                 if balance <= 0:
-                    await message.answer("Недостаточно денег на балансе ")
+                    warn = await message.answer("Недостаточно денег на балансе ")
+                    await asyncio.sleep(5)
+                    await message.delete()
+                    await warn.delete()
                     return
                 bet_sum = int(balance)
-    elif not bet_sum.isdigit() or int(bet_sum) <= 500:
-        await message.answer("Сумма ставки должна быть положительным числом.")
+    elif not (bet_sum.isdigit() and int(bet_sum) >= 0):
+        warn = await message.answer("Сумма ставки должна быть положительным числом.")
+        await asyncio.sleep(5)
+        await message.delete()
+        await warn.delete()
+        return
+    logging.debug(2)
+
+    color_check = bet_range_or_color.strip().lower().replace('ё', 'е')
+
+    if color_check in COLOR_MAP:
+        bet_range_or_color = COLOR_MAP[color_check]
+
+    if not await check_correct_bet(message, bet_range_or_color):
         return
 
-    color_check = bet_range_or_color.strip().lower()
-    if color_check in COLORS_NAME:
-        bet_range_or_color = color_check
-
-    # Если диапазон, проверяем его
-    elif "-" in bet_range_or_color:
-        start_end = bet_range_or_color.split("-")
-        if len(start_end) != 2 or not all(x.isdigit() for x in start_end):
-            await message.answer("Неправильный диапазон чисел.")
-            return
-        start, end = map(int, start_end)
-
-        if not (0 <= start < 19 and 0 < end < 19 and start < end):
-            await message.answer("Диапазон должен быть в пределах от 1 до 18.")
-            return
-    else:
-        if not bet_range_or_color.isdigit() or not (0 <= int(bet_range_or_color) < 19):
-            await message.answer("Диапазон должен быть в пределах от 1 до 18.")
-            return
     bet_sum = int(bet_sum)
 
     async with dp_pool.acquire() as conn:
@@ -141,7 +140,10 @@ async def handle_three_word_bet(message: Message, user_id, username, dp_pool: Po
                 return
             balance = row[0]
             if not (bet_sum <= balance):
-                await message.answer("Недостаточно денег на балансе ")
+                warn = await message.answer("Недостаточно денег на балансе ")
+                await asyncio.sleep(5)
+                await message.delete()
+                await warn.delete()
                 return
 
     # Если пользователь уже ставил, добавляем новую ставку в список
@@ -170,7 +172,7 @@ async def handle_three_word_bet(message: Message, user_id, username, dp_pool: Po
 
     # Отправляем сообщение
     bet_message = await message.answer(
-        text=f"""Ставка {action}: <a href="tg://user?id={user_id}">{username}</a> {bet_sum} монет на {bet_range_or_color}""",
+        text=f"""Ставка {action}: <a href="tg://user?id={user_id}">{username}</a> {bet_sum} монет на {COLOR_EMOJIS.get(bet_range_or_color, bet_range_or_color)}""",
         parse_mode="HTML"
     )
 
@@ -285,10 +287,13 @@ async def show_balance(message: Message, dp_pool, user_id, username):
 
 @user_message.message(or_f(F.text.lower() == "/bonus", F.text == "Бонус"))
 async def get_daily_bonus(message: Message):
-    await message.answer(
+    bonus = await message.answer(
         text="Забрать бонус 🎁",
         reply_markup=bonus_button()
     )
+    await asyncio.sleep(20)
+    await message.delete()
+    await bonus.delete()
 
 
 # @user_message.message(Command('language'))
@@ -303,3 +308,19 @@ async def process_user_blocked_bot(event: ChatMemberUpdated, dp_pool: Pool):
     async with dp_pool.acquire() as conn:
         async with conn.cursor() as cursor:
             await cursor.execute(UPDATE_USER_ACTIVE, (0, event.from_user.id))
+
+
+async def check_correct_bet(message: Message, bet_range_or_color):
+    # Если диапазон, проверяем его
+    if "-" in bet_range_or_color:
+        start_end = bet_range_or_color.split("-")
+        if len(start_end) != 2 or not all(x.isdigit() for x in start_end):
+            await message.answer("Неправильный диапазон чисел.")
+            return False
+        start, end = map(int, start_end)
+
+        if not (0 <= start < 19 and 0 < end < 19 and start < end):
+            await message.answer("Диапазон должен быть в пределах от 1 до 18.")
+            return False
+
+    return True
