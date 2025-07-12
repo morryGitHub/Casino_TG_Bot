@@ -1,5 +1,14 @@
 from random import randint
 
+from aiogram import Bot
+from aiogram.fsm.context import FSMContext
+from aiomysql import Pool
+
+from db.database import users_bet, total_bet
+from lexicon.colors import COLOR_EMOJIS
+from services.database_functions import update_balance_after_spin, update_statistics
+from services.updates import delete_bet_mes, clear_dicts
+
 mono_digits = {
     '0': '\U0001D7F6',
     '1': '\U0001D7F7',
@@ -87,3 +96,58 @@ def calculate_win_and_payout(number: int, color: str, bet_choice: str, amount: i
         except ValueError:
             return False, 0
     return False, 0
+
+
+async def process_all_bets(users_bet: dict, number: int, color: str, dp_pool: Pool) -> tuple[list[str], int, int]:
+    """Обрабатывает все ставки, возвращает сообщения о ставках, общую сумму ставок и выплат."""
+    bet_results = []
+    total_bet_sum = 0
+    total_payout_sum = 0
+
+    for uid, bets in users_bet.items():
+        for bet in bets:
+            amount, target, username = bet
+            total_bet_sum += amount
+            is_win, payout = calculate_win_and_payout(number, color, target, amount)
+
+            if is_win:
+                total_payout_sum += payout
+                bet_results.append(
+                    f"💲 <a href='tg://user?id={uid}'>{username}</a> выиграл {payout} на {COLOR_EMOJIS.get(target, target)}"
+                )
+
+                await update_balance_after_spin(dp_pool, payout, uid)
+
+            bet_results.append(f"🐾 {username} {amount} на {COLOR_EMOJIS.get(target, target)}")
+
+    return bet_results, total_bet_sum, total_payout_sum
+
+
+async def finalize_round(bot: Bot, state: FSMContext, user_id: int, number: int, color: str, dp_pool: Pool):
+    """Финальный этап раунда: обработка ставок, обновление статистики, очистка состояния."""
+    bet_results, total_bet_sum, total_payout_sum = await process_all_bets(users_bet, number, color, dp_pool)
+    await update_statistics(user_id, total_bet_sum, total_payout_sum, dp_pool)
+    await delete_bet_mes(bot)
+    clear_dicts()
+    await state.clear()
+    return bet_results
+
+
+def add_or_update_user_bet(user_id: int, bet_sum: int, bet_range_or_color: str, username: str) -> str:
+    """
+    Добавляет или обновляет ставку пользователя.
+    Возвращает строку действия: "принята" или "увеличена".
+    """
+    if user_id in users_bet:
+        for bet in users_bet[user_id]:
+            if bet[1] == bet_range_or_color:
+                bet[0] += bet_sum
+                total_bet[user_id] += bet_sum
+                return "увеличена"
+        users_bet[user_id].append([bet_sum, bet_range_or_color, username])
+        total_bet[user_id] += bet_sum
+        return "принята"
+    else:
+        users_bet[user_id] = [[bet_sum, bet_range_or_color, username]]
+        total_bet[user_id] = bet_sum
+        return "принята"
