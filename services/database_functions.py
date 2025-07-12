@@ -124,40 +124,39 @@ async def check_and_get_valid_bet(
         dp_pool: Pool,
         user_id: int,
         min_balance: int = 50,
-        bet_sum: int | None = None,
+        bet_sum: int | str = None,
 ) -> int | None:
     """
     Проверяет, есть ли у пользователя нужный баланс.
     Если bet_sum не задана, возвращает max допустимую ставку (balance).
     Возвращает None, если баланса нет.
     """
-    async with dp_pool.acquire() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute(SELECT_BALANCE, (user_id,))
-            row = await cursor.fetchone()
+    balance = await get_balance(dp_pool, user_id)
 
-            if row is None:
-                logging.warning(f"Пользователь {user_id} не найден в БД.")
-                return None
+    if balance < min_balance:
+        warn = await message.answer(f"Минимальная ставка — {min_balance}")
+        await asyncio.sleep(5)
+        await message.delete()
+        await warn.delete()
+        return None
 
-            balance = row[0]
+    if isinstance(bet_sum, str) and bet_sum.lower() == "allin":
+        bet_sum = balance
+    else:
+        try:
+            bet_sum = int(bet_sum)
+        except (ValueError, TypeError) as error:
+            logging.error(error)
 
-            if balance < min_balance:
-                warn = await message.answer("Недостаточно денег на балансе.")
-                await asyncio.sleep(5)
-                await message.delete()
-                await warn.delete()
-                return None
+    if bet_sum is not None and bet_sum > balance:
+        warn = await message.answer("У вас недостаточно средств для такой ставки.")
+        await asyncio.sleep(5)
+        await message.delete()
+        await warn.delete()
+        return None
 
-            if bet_sum is not None and bet_sum > balance:
-                warn = await message.answer("Ставка превышает баланс.")
-                await asyncio.sleep(5)
-                await message.delete()
-                await warn.delete()
-                return None
-
-            # Если ставка не задана — возвращаем максимально допустимую
-            return bet_sum if bet_sum is not None else int(balance)
+    # Если ставка не задана — возвращаем максимально допустимую
+    return bet_sum if bet_sum is not None else int(balance)
 
 
 async def update_user_active(dp_pool: Pool, event: TelegramObject):

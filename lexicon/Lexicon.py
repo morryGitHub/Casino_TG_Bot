@@ -1,6 +1,7 @@
 from lexicon.vocabulary import LEXICON_RU
 from lexicon.vocabulary import LEXICON_EN
 
+
 class Lexicon:
     def __init__(self, lexicons, default_lang='ru'):
         self.lexicons = lexicons
