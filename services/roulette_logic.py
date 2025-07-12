@@ -47,7 +47,7 @@ def create_roulette():
     rows = [lines[i:i + 6] for i in range(1, len(lines), 6)]
     result = f"{lines[0]}\n"  # 0 🟢
     for row in rows:
-        result += '  '.join(row) + '\n'
+        result += ' '.join(row) + '\n'
     return result
 
 
