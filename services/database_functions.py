@@ -124,8 +124,8 @@ async def check_and_get_valid_bet(
         message: Message,
         dp_pool: Pool,
         user_id: int,
+        bet_sum: int | str,
         min_balance: int = 50,
-        bet_sum: int | str = None,
 ) -> int | None:
     """
     Проверяет, есть ли у пользователя нужный баланс.

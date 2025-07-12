@@ -77,7 +77,7 @@ async def handle_three_word_bet(message: Message, user_id, username, dp_pool: Po
     your_bet = bet_data[0]
     bet_range_or_color = bet_data[2]
 
-    bet_sum = await check_and_get_valid_bet(message, dp_pool, user_id, min_balance=50, bet_sum=your_bet)
+    bet_sum = await check_and_get_valid_bet(message, dp_pool, user_id, your_bet, min_balance=50, )
 
     if bet_sum is None:
         return  # недостаточно средств, сообщение уже отправлено
