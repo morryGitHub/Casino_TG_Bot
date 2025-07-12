@@ -8,8 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiomysql import Pool
 
-from db.database import roulette_states, bet_messages, users_bet, total_bet, user_messages, double_messages, \
-    roulette_messages
+from db.database import roulette_states, bet_messages, users_bet, total_bet, user_messages, roulette_messages
 from lexicon.colors import COLOR_EMOJIS
 from services.process_messages import delete_bet_mes, delete_user_messages, delete_double_messages
 
@@ -102,7 +101,7 @@ def calculate_win_and_payout(number: int, color: str, bet_choice: str, amount: i
     return False, 0
 
 
-async def process_all_bets(users_bet: dict, number: int, color: str, dp_pool: Pool) -> tuple[list[str], int, int]:
+async def process_all_bets(number: int, color: str, dp_pool: Pool) -> tuple[list[str], int, int]:
     """Обрабатывает все ставки, возвращает сообщения о ставках, общую сумму ставок и выплат."""
     bet_results = []
     total_bet_sum = 0
@@ -129,7 +128,7 @@ async def process_all_bets(users_bet: dict, number: int, color: str, dp_pool: Po
 
 async def finalize_round(bot: Bot, state: FSMContext, user_id: int, number: int, color: str, dp_pool: Pool):
     """Финальный этап раунда: обработка ставок, обновление статистики, очистка состояния."""
-    bet_results, total_bet_sum, total_payout_sum = await process_all_bets(users_bet, number, color, dp_pool)
+    bet_results, total_bet_sum, total_payout_sum = await process_all_bets(number, color, dp_pool)
     await update_statistics(user_id, total_bet_sum, total_payout_sum, dp_pool)
     await delete_bet_mes(bot)
     clear_dicts()
@@ -176,7 +175,7 @@ async def process_last_update(bot: Bot):
     await bot.delete_webhook(drop_pending_updates=True)
 
 
-async def delete_roulette_message(bot, roulette_messages, chat_id):
+async def delete_roulette_message(bot, chat_id):
     message_id = roulette_messages.get(chat_id)
     if message_id:
         try:
@@ -236,7 +235,7 @@ async def process_spin_round(
     if is_callback:
         await trigger_message.delete()
     else:
-        await delete_roulette_message(bot, roulette_messages, chat_id)
+        await delete_roulette_message(bot, chat_id)
 
     bet_results = await finalize_round(bot, state, user_id, number, color, dp_pool)
 

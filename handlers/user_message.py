@@ -13,9 +13,8 @@ from keyboards.user_kb import start_buttons, bets_keyboards, bonus_button
 from lexicon.Lexicon import lexicon
 from services.database_functions import check_and_get_valid_bet, update_balance_before_spin, update_user_active, \
     get_balance_data, get_balance
-from services.roulette_logic import create_roulette, add_or_update_user_bet
+from services.roulette_logic import create_roulette, add_or_update_user_bet, check_correct_bet, process_spin_round
 from lexicon.colors import COLOR_MAP, COLOR_EMOJIS
-from services.updates import check_correct_bet, process_spin_round
 
 user_message = Router()
 user_message.message.filter(IsBotAdminFilter())

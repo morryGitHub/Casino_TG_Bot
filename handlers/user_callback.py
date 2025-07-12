@@ -11,9 +11,8 @@ from FSM.FSM import GameStates
 from db.database import bet_messages, roulette_messages, users_bet, total_bet
 from services.database_functions import check_and_get_valid_bet, update_balance_before_spin, handle_double_bet, \
     update_balance_after_spin, update_balance_after_bonus, update_user_lang
-from services.roulette_logic import add_or_update_user_bet
-from services.updates import clear_dicts, delete_double_messages, delete_bet_mes, \
-    edit_double_messages, is_bet_ready, process_spin_round
+from services.process_messages import delete_bet_mes, edit_double_messages, delete_double_messages
+from services.roulette_logic import add_or_update_user_bet, process_spin_round, is_bet_ready, clear_dicts
 
 user_callback = Router()
 

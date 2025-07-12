@@ -1,6 +1,4 @@
-import logging
-
-from aiogram.types import TelegramObject, CallbackQuery, Message
+from aiogram.types import TelegramObject, CallbackQuery
 from aiomysql import Pool
 from db.queries import SELECT_BALANCE
 from aiogram.filters import BaseFilter

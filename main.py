@@ -9,10 +9,10 @@ from Middleware.dbMiddleware import DbMiddleware, CheckUserMiddleware
 from Middleware.langMiddleware import LanguageMiddleware
 from db.database import create_pool, close_pool
 from keyboards.commands import set_bot_commands
-from services.updates import process_last_update
 from config_data.config import load_config, Config
 from handlers.user_message import user_message
 from handlers.user_callback import user_callback
+from services.roulette_logic import process_last_update
 
 logger = logging.getLogger(__name__)
 
