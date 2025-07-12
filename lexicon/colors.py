@@ -29,4 +29,4 @@ COLOR_MAP = {
     "green": "green",
 }
 
-BET_ALL_IN = {"allin", "all-in", "all in", "all_in"}
+BET_ALL_IN = {"allin", "all-in", "all in", "all_in", "все", "всё"}

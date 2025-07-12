@@ -12,6 +12,7 @@ from db.queries import SELECT_BALANCE, UPDATE_BALANCE_BEFORE_SPIN, SELECT_USER_L
     UPDATE_WIN_RESULTS, UPDATE_LOST_RESULTS, SELECT_MAXWIN_RESULTS, SELECT_MAXBET_RESULTS, UPDATE_MAXWIN_RESULTS, \
     UPDATE_MAXBET_RESULTS, UPDATE_USER_ACTIVE, SELECT_DATA_FROM_RESULTS, SELECT_USER_LASTBONUS, UPDATE_USER_LASTBONUS, \
     UPDATE_BALANCE, UPDATE_USER_LANG
+from lexicon.colors import BET_ALL_IN
 
 BONUS_COOLDOWN = timedelta(hours=24)
 BONUS_AMOUNT = 2500
@@ -140,7 +141,7 @@ async def check_and_get_valid_bet(
         await warn.delete()
         return None
 
-    if isinstance(bet_sum, str) and bet_sum.lower() == "allin":
+    if isinstance(bet_sum, str) and bet_sum.lower() in BET_ALL_IN:
         bet_sum = balance
     else:
         try:
