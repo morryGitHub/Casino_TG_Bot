@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 
 from random import randint
 from services.database_functions import update_balance_after_spin, update_statistics
@@ -90,12 +91,7 @@ def calculate_win_and_payout(number: int, color: str, bet_choice: str, amount: i
             start, end = map(int, bet_choice.split("-"))
             if start <= number <= end:
                 span = (end + 1) - start  # Кол-во чисел в диапазоне
-                if span == 6:
-                    return True, amount * 3
-                elif span == 9:
-                    return True, amount * 2
-                else:
-                    return True, amount  # Просто возврат (или как ты хочешь)
+                return True, math.ceil(amount * (18 / span))
         except ValueError:
             return False, 0
     return False, 0
